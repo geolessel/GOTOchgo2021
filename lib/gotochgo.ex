@@ -6,4 +6,11 @@ defmodule Gotochgo do
   Contexts are also responsible for managing your data, regardless
   if it comes from the database, an external API or others.
   """
+
+  alias Gotochgo.FakeRepo, as: Repo
+
+  @spec list_companies :: list({ticker :: String.t(), name :: String.t()})
+  def list_companies do
+    Repo.all(:companies)
+  end
 end

@@ -12,9 +12,10 @@ defmodule Gotochgo.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Gotochgo.PubSub},
       # Start the Endpoint (http/https)
-      GotochgoWeb.Endpoint
+      GotochgoWeb.Endpoint,
       # Start a worker by calling: Gotochgo.Worker.start_link(arg)
       # {Gotochgo.Worker, arg}
+      Gotochgo.FakeDB
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -17,13 +17,18 @@ defmodule Gotochgo.FakeRepo do
     GenServer.call(__MODULE__, :inspect)
   end
 
+  def restart_timer do
+    GenServer.cast(__MODULE__, :restart_timer)
+  end
+
   # ┌──────────────────┐
   # │ Server Callbacks │
   # └──────────────────┘
 
   def init(_state) do
     companies = Gotochgo.SAndP500.companies()
-    {:ok, %{companies: companies}}
+    {:ok, timer} = build_timer()
+    {:ok, %{companies: companies, timer: timer}}
   end
 
   def handle_call({:all, key}, _, state) do
@@ -33,4 +38,19 @@ defmodule Gotochgo.FakeRepo do
   def handle_call(:inspect, _, state) do
     {:reply, state, state}
   end
+
+  def handle_cast(:restart_timer, state) do
+    with {:ok, _} <- :timer.cancel(state.timer),
+         {:ok, timer} <- build_timer() do
+      {:noreply, Map.put(state, :timer, timer)}
+    end
+  end
+
+  def handle_info(:tick, state) do
+    companies = Gotochgo.update_all_prices(state.companies)
+    {:noreply, Map.put(state, :companies, companies)}
+  end
+
+  def update_ms, do: 2_000
+  def build_timer, do: :timer.send_interval(update_ms(), :tick)
 end

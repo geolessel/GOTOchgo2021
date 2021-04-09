@@ -1,6 +1,19 @@
 /* This file is for your main application css. */
 @import "./phoenix.css";
 
+.right {
+  text-align: right;
+}
+
+.comments {
+  margin-left: 2em;
+}
+
+.comment {
+  padding: 1em 0;
+  border-bottom: 1px solid #ddd;
+}
+
 /* Alerts and form errors */
 .alert {
   padding: 15px;

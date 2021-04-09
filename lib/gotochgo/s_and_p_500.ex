@@ -1,5 +1,20 @@
 defmodule Gotochgo.SAndP500 do
+  @moduledoc """
+  A convenience module containing the S&P 500
+  """
+
   def companies do
+    company_list()
+    |> Enum.map(fn {ticker, name} ->
+      %Gotochgo.Company{ticker: ticker, name: name, price: starting_price()}
+    end)
+  end
+
+  def starting_price do
+    (50 + :rand.uniform(250)) / 1.23
+  end
+
+  def company_list do
     [
       {"A", "Agilent Technologies"},
       {"AAL", "American Airlines Group"},

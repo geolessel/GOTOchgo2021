@@ -15,7 +15,7 @@ defmodule Gotochgo.Application do
       GotochgoWeb.Endpoint,
       # Start a worker by calling: Gotochgo.Worker.start_link(arg)
       # {Gotochgo.Worker, arg}
-      Gotochgo.FakeDB
+      Gotochgo.FakeRepo
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

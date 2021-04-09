@@ -1,6 +1,6 @@
 defmodule Gotochgo.FakeRepo do
   @moduledoc """
-  A GenServer that essentially fakes a database.
+  A GenServer that fakes a database.
   """
 
   use GenServer

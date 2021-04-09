@@ -24,6 +24,8 @@ defmodule GotochgoWeb do
       import Plug.Conn
       import GotochgoWeb.Gettext
       alias GotochgoWeb.Router.Helpers, as: Routes
+
+      import Phoenix.LiveView.Controller
     end
   end
 
@@ -48,6 +50,8 @@ defmodule GotochgoWeb do
 
       import Plug.Conn
       import Phoenix.Controller
+
+      import Phoenix.LiveView.Router
     end
   end
 
@@ -69,6 +73,8 @@ defmodule GotochgoWeb do
       import GotochgoWeb.ErrorHelpers
       import GotochgoWeb.Gettext
       alias GotochgoWeb.Router.Helpers, as: Routes
+
+      import Phoenix.LiveView.Helpers
     end
   end
 

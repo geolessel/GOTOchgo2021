@@ -39,4 +39,9 @@ defmodule Gotochgo do
     companies
     |> Enum.map(&update_price/1)
   end
+
+  @spec subscribe(subscriber :: pid()) :: :ok
+  def subscribe(pid) do
+    Repo.subscribe(pid)
+  end
 end

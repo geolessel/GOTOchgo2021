@@ -13,6 +13,10 @@ defmodule Gotochgo.FakeRepo do
     GenServer.call(__MODULE__, {:all, key})
   end
 
+  def subscribe(subscriber_pid) do
+    GenServer.cast(__MODULE__, {:subscribe, subscriber_pid})
+  end
+
   def inspect do
     GenServer.call(__MODULE__, :inspect)
   end
@@ -28,7 +32,7 @@ defmodule Gotochgo.FakeRepo do
   def init(_state) do
     companies = Gotochgo.SAndP500.companies()
     {:ok, timer} = build_timer()
-    {:ok, %{companies: companies, timer: timer}}
+    {:ok, %{companies: companies, subscribers: [], timer: timer}}
   end
 
   def handle_call({:all, key}, _, state) do
@@ -37,6 +41,11 @@ defmodule Gotochgo.FakeRepo do
 
   def handle_call(:inspect, _, state) do
     {:reply, state, state}
+  end
+
+  def handle_cast({:subscribe, pid}, state) do
+    state = Map.update(state, :subscribers, [], &[pid | &1])
+    {:noreply, state}
   end
 
   def handle_cast(:restart_timer, state) do
@@ -48,6 +57,12 @@ defmodule Gotochgo.FakeRepo do
 
   def handle_info(:tick, state) do
     companies = Gotochgo.update_all_prices(state.companies)
+
+    state.subscribers
+    |> Enum.each(fn subscriber ->
+      send(subscriber, {:new_prices, companies})
+    end)
+
     {:noreply, Map.put(state, :companies, companies)}
   end
 

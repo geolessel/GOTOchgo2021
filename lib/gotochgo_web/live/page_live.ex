@@ -27,4 +27,8 @@ defmodule GotochgoWeb.PageLive do
     Gotochgo.insert_comment(text)
     {:noreply, socket}
   end
+
+  def terminate({:shutdown, :closed}, socket) do
+    Gotochgo.unsubscribe(self())
+  end
 end

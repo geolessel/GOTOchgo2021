@@ -83,6 +83,11 @@ defmodule Gotochgo.FakeRepo do
       |> Map.update(:comments, [], &[comment | &1])
       |> Map.update(:comment_counter, 0, &(&1 + 1))
 
+    state.subscribers
+    |> Enum.each(fn subscriber ->
+      send(subscriber, {:new_comment, comment})
+    end)
+
     {:noreply, state}
   end
 

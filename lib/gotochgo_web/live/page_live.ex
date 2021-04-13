@@ -7,7 +7,8 @@ defmodule GotochgoWeb.PageLive do
     companies = Gotochgo.list_companies()
     comments = Gotochgo.list_comments()
 
-    {:ok, assign(socket, companies: companies, comments: comments)}
+    {:ok, assign(socket, companies: companies, comments: comments),
+     temporary_assigns: [comments: []]}
   end
 
   def render(assigns) do
@@ -18,8 +19,12 @@ defmodule GotochgoWeb.PageLive do
     {:noreply, assign(socket, :companies, companies)}
   end
 
+  def handle_info({:new_comment, comment}, socket) do
+    {:noreply, assign(socket, comments: [comment])}
+  end
+
   def handle_event("submit_comment", %{"comments" => %{"text" => text}}, socket) do
     Gotochgo.insert_comment(text)
-    {:noreply, assign(socket, comments: Gotochgo.list_comments())}
+    {:noreply, socket}
   end
 end

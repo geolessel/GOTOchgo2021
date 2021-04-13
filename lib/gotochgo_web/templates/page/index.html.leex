@@ -36,7 +36,7 @@
       <%= text_input(f, :text) %>
     </div>
 
-    <div id="comments-container">
+    <div id="comments-container" phx-update="prepend">
       <%= for comment <- @comments do %>
         <div class="comment" id="<%= comment.id %>"><%= comment.text %></div>
       <% end %>

@@ -2,6 +2,8 @@ defmodule GotochgoWeb.PageLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do
+    if connected?(socket), do: Gotochgo.subscribe(self())
+
     companies = Gotochgo.list_companies()
     {:ok, assign(socket, :companies, companies)}
   end

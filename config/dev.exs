@@ -52,7 +52,8 @@ config :gotochgo, GotochgoWeb.Endpoint,
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
       ~r"lib/gotochgo_web/(live|views)/.*(ex)$",
-      ~r"lib/gotochgo_web/templates/.*(eex)$"
+      ~r"lib/gotochgo_web/templates/.*(eex)$",
+      ~r"lib/gotochgo/.*(ex)$"
     ]
   ]
 

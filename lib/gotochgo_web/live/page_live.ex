@@ -11,4 +11,8 @@ defmodule GotochgoWeb.PageLive do
   def render(assigns) do
     GotochgoWeb.PageView.render("index.html", assigns)
   end
+
+  def handle_info({:new_prices, companies}, socket) do
+    {:noreply, assign(socket, :companies, companies)}
+  end
 end

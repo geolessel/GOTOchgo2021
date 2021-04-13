@@ -19,6 +19,10 @@ defmodule Gotochgo.FakeRepo do
     GenServer.cast(__MODULE__, {:subscribe, subscriber_pid})
   end
 
+  def unsubscribe(subscriber_pid) do
+    GenServer.cast(__MODULE__, {:unsubscribe, subscriber_pid})
+  end
+
   def insert(%Comment{} = comment) do
     GenServer.cast(__MODULE__, {:insert_comment, comment})
   end
@@ -59,6 +63,15 @@ defmodule Gotochgo.FakeRepo do
 
   def handle_cast({:subscribe, pid}, state) do
     state = Map.update(state, :subscribers, [], &[pid | &1])
+    {:noreply, state}
+  end
+
+  def handle_cast({:unsubscribe, pid}, state) do
+    state =
+      Map.update(state, :subscribers, [], fn subscribers ->
+        Enum.filter(subscribers, &(&1 != pid))
+      end)
+
     {:noreply, state}
   end
 

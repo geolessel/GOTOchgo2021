@@ -54,4 +54,9 @@ defmodule Gotochgo do
   def subscribe(pid) do
     Repo.subscribe(pid)
   end
+
+  @spec unsubscribe(subsriber :: pid()) :: :ok
+  def unsubscribe(pid) do
+    Repo.unsubscribe(pid)
+  end
 end

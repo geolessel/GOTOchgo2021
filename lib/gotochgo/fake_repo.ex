@@ -3,6 +3,8 @@ defmodule Gotochgo.FakeRepo do
   A GenServer that fakes a database.
   """
 
+  alias Gotochgo.Comment
+
   use GenServer
 
   def start_link(opts \\ []) do
@@ -15,6 +17,10 @@ defmodule Gotochgo.FakeRepo do
 
   def subscribe(subscriber_pid) do
     GenServer.cast(__MODULE__, {:subscribe, subscriber_pid})
+  end
+
+  def insert(%Comment{} = comment) do
+    GenServer.cast(__MODULE__, {:insert_comment, comment})
   end
 
   def inspect do
@@ -32,7 +38,15 @@ defmodule Gotochgo.FakeRepo do
   def init(_state) do
     companies = Gotochgo.SAndP500.companies()
     {:ok, timer} = build_timer()
-    {:ok, %{companies: companies, subscribers: [], timer: timer}}
+
+    {:ok,
+     %{
+       comments: [%Comment{id: 1, text: "first!"}],
+       comment_counter: 1,
+       companies: companies,
+       subscribers: [],
+       timer: timer
+     }}
   end
 
   def handle_call({:all, key}, _, state) do
@@ -45,6 +59,17 @@ defmodule Gotochgo.FakeRepo do
 
   def handle_cast({:subscribe, pid}, state) do
     state = Map.update(state, :subscribers, [], &[pid | &1])
+    {:noreply, state}
+  end
+
+  def handle_cast({:insert_comment, comment}, state) do
+    comment = %{comment | id: state.comment_counter + 1}
+
+    state =
+      state
+      |> Map.update(:comments, [], &[comment | &1])
+      |> Map.update(:comment_counter, 0, &(&1 + 1))
+
     {:noreply, state}
   end
 

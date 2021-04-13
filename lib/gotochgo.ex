@@ -8,7 +8,7 @@ defmodule Gotochgo do
   """
 
   alias Gotochgo.FakeRepo, as: Repo
-  alias Gotochgo.Company
+  alias Gotochgo.{Comment, Company}
 
   @max_movement_percent_tenths 1
   @increase_price_change_percent 60
@@ -16,6 +16,16 @@ defmodule Gotochgo do
   @spec list_companies :: list({ticker :: String.t(), name :: String.t()})
   def list_companies do
     Repo.all(:companies)
+  end
+
+  @spec list_comments :: list(comments :: Comment.t())
+  def list_comments do
+    Repo.all(:comments)
+  end
+
+  @spec insert_comment(text :: String.t()) :: :ok
+  def insert_comment(text) do
+    Repo.insert(%Comment{text: text})
   end
 
   @spec update_price(Company.t()) :: Company.t()

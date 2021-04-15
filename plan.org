@@ -1,0 +1,374 @@
+* GOTOpia Chicago 2021 talk plan
+** Setup
+For the screen setup in OBS, the move-to-screen-position 2-F works
+well. Just move the windows to the middle of the screen.
+
+Text size of 251.
+
+** Step 1 - Traditional controller
+- Traditional controller
+- Traditional view
+- Refresh browser to get new information
+- Point out logs and response time'
+
+** Step 2 - Add LiveView
+*** Add the dependency to your deps
+
+[[file:./mix.exs][mix.exs]]
+
+#+begin_src elixir
+  {:phoenix_live_view, "~> 0.15.4"}
+#+end_src
+
+*** Add a signing salt
+
+[[file:./config/config.exs][config/config.exs]]
+
+#+begin_src elixir
+  config :my_app, MyAppWeb.Endpoint,
+    live_view: [signing_salt: "SO_SO_SECRET"]
+#+end_src
+
+*** Add the appropriate import
+
+[[file:./lib/gotochgo_web.ex][lib/gotochgo_web.ex]]
+
+#+begin_src elixir
+  # in controller
+  import Phoenix.LiveView.Controller
+
+  # in view or view_helpers
+  import Phoenix.LiveView.Helpers
+
+  # in router
+  import Phoenix.LiveView.Router
+#+end_src
+
+*** Add live_flash to the browser pipeline
+
+[[file:./lib/gotochgo_web/router.ex][lib/gotochgo_web/router.ex]]
+
+#+begin_src elixir
+  plug :fetch_live_flash
+#+end_src
+
+*** Expose the LiveView socket
+
+[[file:./lib/gotochgo_web/endpoint.ex][lib/gotochgo_web/endpoint.ex]]
+
+#+begin_src elixir
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]]
+#+end_src
+
+*** Add LiveView dependencies to js package
+
+[[file:./assets/package.json][assets/package.json]]
+
+#+begin_src json
+  "phoenix_live_view": "file:../deps/phoenix_live_view"
+#+end_src
+
+And then install the dependency.
+
+#+begin_src shell
+  npm install --prefix assets
+#+end_src
+
+*** Ensure csrf_meta_tag() is in the html head
+
+Create our live layout template.
+
+[[file:./lib/gotochgo_web/templates/layout/app.html.leex][lib/gotochgo_web/templates/layout/app.html.leex]]
+
+This is typically the same contents as your app.html.eex layout.
+Make sure ~<%= csrf_meta_tag() %>~ is in the head.
+
+*** Set the live layout in the pipeline
+
+[[file:./lib/gotochgo_web/router.ex][lib/gotochgo_web/router.ex]]
+
+#+begin_src elixir
+  plug :put_root_layout, {GotochgoWeb.LayoutView, :app}
+#+end_src
+
+*** Rename app.html.eex to app.html.leex
+This is needed to tell Phoenix that this will be a live template.
+
+[[file:./lib/gotochgo_web/layouts/appl.html.eex][/lib/gotochgo_web/layouts/appl.html.eex]]
+
+*** Insert boilerplate js into app.js
+
+[[file:./assets/js/app.js][assets/js/app.js]]
+
+#+begin_src javascript
+  import "phoenix_html"
+
+  import {Socket} from "phoenix"
+  import LiveSocket from "phoenix_live_view"
+
+  let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+  let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
+  liveSocket.connect()
+#+end_src
+
+** Step 3 - Make it go through a live route
+At this point, we have added the dependencies and have done the setup
+required, but we are still hitting our application through a regular
+route.
+
+We need to go through a live route.
+
+*** Change the router to use the =live= action
+[[file:./lib/gotochgo_web/router.ex][lib/gotochgo_web/router.ex]]
+
+#+begin_src diff
+- get "/", PageController, :index
++ live "/", PageLive
+#+end_src
+
+*** Add the =GotochgoWeb.PageLive= module
+We don't care about the =assigns= param.
+
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  defmodule GotochgoWeb.PageLive do
+    use Phoenix.LiveView
+
+    def render(_assigns) do
+      companies = Gotochgo.list_companies()
+      GotochgoWeb.PageView.render("index.html", companies: companies)
+    end
+  end
+#+end_src
+
+*** Rename page template to live template
+[[file:./lib/gotochgo_web/templates/page/index.html.leex][lib/gotochgo_web/templates/page/index.html.leex]]
+
+** Step 4 - Add =mount/3= function
+We are currently getting the list of companies in the =render/1=
+function but that isn't the "live way". We should instead add that
+list of companies into our connection socket assigns. To do so, we
+need to add the =mount/3= function and move the retrieval into it.
+
+*** Add =render/3= function
+Note that we now care about the =assigns= param as it has our
+=companies= in it.
+
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+defmodule GotochgoWeb.PageLive do
+  use Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    companies = Gotochgo.list_companies()
+    {:ok, assign(socket, companies: companies)}
+  end
+
+  def render(assigns) do
+    GotochgoWeb.PageView.render("index.html", assigns)
+  end
+end
+#+end_src
+
+** Step 5 - Subscribe to database/price updates
+I have set up a sort of pub/sub module to allow any process to
+subscribe to published updates (specifically company price changes).
+
+We need to subscribe to them.
+
+After adding the subscription, show that the browser is
+auto-refreshing! This is actually not what we want -- the connected
+socket is crashing but it is auto-recovering.
+
+SHOW THE LOGS. SHOW THE BROWSER.
+
+*** Make the call if connected to the socket
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  def mount(_params, _session, socket) do
+    if connected?(socket), do: Gotochgo.subscribe(self())
+
+    companies = Gotochgo.list_companies()
+    {:ok, assign(socket, :companies, companies)}
+  end
+#+end_src
+
+** Step 6 - Handle the =:new_prices= message — WE'RE LIVE!
+The browser crashing and rebooting is obviously not going to be the
+best solution for real-time updates in our app. We need to handle the
+message that is sent.
+
+Show the message in the logs!
+
+*** Check the logs for the unhandled message
+It will tell us what was called and not handled
+
+#+begin_src
+(UndefinedFunctionError) function GotochgoWeb.PageLive.handle_info/2 is undefined or private
+(gotochgo 0.1.0) GotochgoWeb.PageLive.handle_info({:new_prices, [%Gotochgo.Company{name:
+#+end_src
+
+*** Add the handler
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  def handle_info({:new_prices, companies}, socket) do
+    {:noreply, assign(socket, :companies, companies)}
+  end
+#+end_src
+
+** Step 7 - Add live chat?
+Can we go even further with the push updates? A lot of demonstrations
+of push updates go into live chatting capabilities, but we've focused
+on stock prices. But we can do both!
+
+*** Add the comment form to the html template
+This will fail a reload because =@comments= is not in the assigns.
+
+Point out =phx_submit=.
+
+[[file:./lib/gotochgo_web/templates/page/index.html.leex][lib/gotochgo_web/templates/page/index.html.leex]]
+
+#+begin_src html
+  <div class="comments">
+    <%= f = form_for(:comments, "#", [phx_submit: :submit_comment]) %>
+
+    <div class="comment-form">
+      <h3>Comments</h3>
+      <%= text_input(f, :text) %>
+    </div>
+
+    <div id="comments-container">
+      <%= for comment <- @comments do %>
+        <div class="comment" id="<%= comment.id %>"><%= comment.text %></div>
+      <% end %>
+    </div>
+  </div>
+#+end_src
+
+*** Add =comments= to the list of assigns
+Show the crash log when we try to submit.
+
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  def mount(_params, _session, socket) do
+    if connected?(socket), do: Gotochgo.subscribe(self())
+
+    companies = Gotochgo.list_companies()
+    comments = Gotochgo.list_comments()
+
+    {:ok, assign(socket, companies: companies, comments: comments)}
+  end
+#+end_src
+
+*** Prevent process crashes by handling the event
+We need to handle the event that =phx_submit= sends to us with the
+form contents in it.
+
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  def handle_event("submit_comment", %{"comments" => %{"text" => text}}, socket) do
+    Gotochgo.insert_comment(text)
+    {:noreply, assign(socket, comments: Gotochgo.list_comments())}
+  end
+#+end_src
+
+** Step 8 - Demonstrate support for multiple simultaneous connections
+This isn't just for a single connection to your site — it's for all
+the connections to your site!
+
+Open multiple browser windows and show how the prices are in sync.
+
+Show how comments submitted previously are already there.
+
+*** Don't reload all comments on a submit
+We don't want to have to load every comment from the database every
+time someone makes a comment. We already have all the comments in the
+browser -- we really only need the latest one.
+
+Send away the comment and forget it.
+
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  def handle_event("submit_comment", %{"comments" => %{"text" => text}}, socket) do
+    Gotochgo.insert_comment(text)
+    {:noreply, socket}
+  end
+#+end_src
+
+*** Make =comments= a temporary assign
+We don't need to hold all this in memory.
+
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src diff
+-    {:ok, assign(socket, companies: companies, comments: comments)}
++    {:ok, assign(socket, companies: companies, comments: comments),
++     temporary_assigns: [comments: []]}
+#+end_src
+
+*** Modify our pubsub to publish messages on new comment
+We want to notify every subscriber that a new comment has been posted.
+
+After we do this and send a message, the browser session crashes again.
+
+[[file:./lib/gotochgo/fake_repo.ex][lib/gotochgo/fake_repo.ex]]
+
+#+begin_src elixir
+  def handle_cast({:insert_comment, comment}, state) do
+    comment = %{comment | id: state.comment_counter + 1}
+
+    state =
+      state
+      |> Map.update(:comments, [], &[comment | &1])
+      |> Map.update(:comment_counter, 0, &(&1 + 1))
+
+    state.subscribers
+    |> Enum.each(fn subscriber ->
+      send(subscriber, {:new_comment, comment})
+    end)
+
+    {:noreply, state}
+  end
+#+end_src
+
+*** Handle the new message
+[[file:./lib/gotochgo_web/live/page_live.ex][lib/gotochgo_web/live/page_live.ex]]
+
+#+begin_src elixir
+  def handle_info({:new_comment, comment}, socket) do
+    {:noreply, assign(socket, comments: [comment])}
+  end
+#+end_src
+
+*** Prepend the comment to the list we already have in the UI
+Now we have yet another problem: the entire comments list is now
+replaced with the single new comment.
+
+Solution: we need to tell Phoenix to prepend the list.
+
+#+begin_src html
+  <div id="comments-container" phx-update="prepend">
+#+end_src
+
+** Step 9 - Increase timer frequency and show extent of updates
+Let's make it quicker!
+
+*** Increase frequency
+[[file:./lib/gotochgo/fake_repo.ex][/lib/gotochgo/fake_repo.ex]]
+
+- 2_000
+- 1_000
+-   500
+-   200
+-    16
+
+*** We've been updating a lot more than these few rows
+Scroll down
